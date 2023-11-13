@@ -1,25 +1,25 @@
-% x = exp(1j*pi*rand(100,1))
-% angle(mean(x))
-% angle(mean(real(x)) + 1j*mean(imag(x)))
-rng(0);
+rng(4);
 offset = 0.6; % [-pi:0.2:pi];
-N = 100000;  % number of measurements
-M = 32;     % antenna size
+N = 100000;   % number of measurements
+URA_size = [36, 64, 256, 1024, 4096];
 path_ang = -45+90*rand(N,1);
-% ensure no wrapping around 2*pi
+% ensure no wrapping around 2*pi (slides 28)
 rel_phase_adj_ant = exp(1j*pi*sin(pi*path_ang/180)); 
-% accumulation works (averaging over real and imaginary parts individually)
-est_err_adj_ant = angle(mean(real(rel_phase_adj_ant)) + 1j*mean(imag(rel_phase_adj_ant)));
-max_err = est_err_adj_ant*(M-1);
+% Per antenna, accumulating measurements into one complex number works 
+est_err_adj_ant = angle(mean(rel_phase_adj_ant));
 
-Nmeas = [1e3:1e3:1e4];
-max_errr_plot = zeros(1,length(Nmeas));
+M = sqrt(URA_size);     % antenna size, per side
+Nmeas = [1e2:1e2:1e4];
+max_accumulation_err = zeros(length(Nmeas), length(URA_size));
+% max_accumulation_err = est_err_adj_ant*(2*(M-1));
+
 for ii=1:length(Nmeas)
-    x = rel_phase_adj_ant(1:Nmeas(ii));
-    x2 = angle(mean(real(x)) + 1j*mean(imag(x)));
-    max_errr_plot(ii) = x2*(2*M-1);
+    x = angle(mean(rel_phase_adj_ant(1:Nmeas(ii))));
+    max_accumulation_err(ii, :) = x*(2*(ceil(M/2)-1));
 end
-figure; plot(Nmeas, abs(max_errr_plot)); 
+
+figure; plot(Nmeas, abs(max_accumulation_err)); 
 xlabel("Number of measurements");
 ylabel("Maximum error accumulation (rad)");
-title("32x32 URA, 1024 elements");
+legend("URA size "+string(URA_size));
+title("One realization of random measurements");
