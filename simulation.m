@@ -24,14 +24,15 @@ for jj=1:N_realizations
     end
 end
 
-fig = figure('Units','inches', 'Position', [1 1 6 4]);
+fig = figure('Units','inches', 'Position', [1 1 16 4]);
 for kk=1:length(URA_size)
     subplot(1,length(URA_size),kk)
     tmp = mean(abs(angle(est_err(1:URA_size(kk),:,kk,:))), 4);
-    plot(Nmeas, median(tmp, 1)); hold on;
-    plot(Nmeas, max(tmp, [], 1), '--'); hold on;
+    semilogx(Nmeas, median(tmp, 1)); hold on;
+    semilogx(Nmeas, max(tmp, [], 1), '--'); hold on;
     xlabel("# measurements");
     ylabel("estimation error (rad)");
     legend(["median", "max"]);
     title("URA size "+string(URA_size(kk)));
 end
+exportgraphics(fig,"~/Downloads/mmw-calibration-sim/figures/2.png",'Resolution',300);
