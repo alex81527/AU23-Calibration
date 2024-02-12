@@ -36,3 +36,15 @@ for kk=1:length(URA_size)
     title("URA size "+string(URA_size(kk)));
 end
 exportgraphics(fig,"~/Downloads/mmw-calibration-sim/figures/2.png",'Resolution',300);
+%% test uniform distribution
+ang = [-45:0.5:45];
+steer = zeros(32, length(ang));
+pa = get_phased_array(60.48e9);
+steer = steervec(pa.getElementPosition()/(physconst('LightSpeed')/60.48e9), ...
+        [ang;zeros(1,length(ang))]);
+
+load("../mmw-calibration-sim/cal32_new_taoffice.mat"); % somhow this still works for node 1 mod 5
+% PA.PHASE_CAL(PA.ACTIVE_ANT) = calibration_vec;
+new_steer = steer./exp(1j.*calibration_vec.');
+figure;
+imagesc(abs(new_steer'*steer)); colorbar;
