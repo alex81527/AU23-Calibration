@@ -29,6 +29,7 @@ end
 %     subplot(1,length(URA_size),kk)
 %     tmp = mean(abs(angle(est_err(1:URA_size(kk),:,kk,:))), 4);
 %     semilogx(Nmeas, median(tmp, 1)); hold on;
+%     semilogx(Nmeas, max(tmp, [], 1), '--'); hold on;
 %     xlabel("# measurements");
 %     ylabel("estimation error (rad)");
 %     legend(["median", "max"]);
@@ -36,7 +37,6 @@ end
 % end
 % exportgraphics(fig,"~/Downloads/mmw-calibration-sim/figures/2.png",'Resolution',300);
 
-fig = figure('Units','inches', 'Position', [1 1 16 4]);
 data = [];
 data.Nmeas = Nmeas;
 data.URA_size = URA_size;
@@ -46,12 +46,13 @@ for kk=1:length(URA_size)
     tmp = mean(tmp,2);
     data.dp(:,kk) = tmp;
 end
-save("d7.mat","data");
-figure; bar(data.dp); legend("array size "+string(data.URA_size));
+% save("d7.mat","data");
+fig = figure('Units','inches', 'Position', [1 1 10 4]);
+bar(data.dp); legend("array size "+string(data.URA_size));
 set(gca, 'XTickLabel', string(data.Nmeas))
 xlabel("Number of measurements"); ylabel("Average RMS estimation error (rad)");
 %% test uniform distribution
-ang = [-45:0.5:45];
+ang = [-60:1:60];
 steer = zeros(32, length(ang));
 pa = get_phased_array(60.48e9);
 steer = steervec(pa.getElementPosition()/(physconst('LightSpeed')/60.48e9), ...
@@ -68,10 +69,11 @@ new_steer = steer./exp(1j.*calibration_vec.');
 data = [];
 data.steer = steer;
 data.new_steer = new_steer;
-save("d6_2.mat", "data");
+data.ang = ang;
+% save("d6_2.mat", "data");
 fig=figure;
-subplot(121); tmp = abs(data.steer'*data.steer).'; imagesc(tmp./max(tmp)); colorbar;
-subplot(122); tmp = abs(data.new_steer'*data.steer).'; imagesc(tmp./max(tmp)); colorbar;
+subplot(121); tmp = abs(data.steer'*data.steer).'; imagesc([data.ang(1) data.ang(end)],[data.ang(1) data.ang(end)],tmp./max(tmp)); colorbar;
+subplot(122); tmp = abs(data.new_steer'*data.steer).'; imagesc([data.ang(1) data.ang(end)],[data.ang(1) data.ang(end)],tmp./max(tmp)); colorbar;
 % subplot(133); tmp = abs(new_steer2'*steer).'; imagesc(tmp./max(tmp)); colorbar;
 han=axes(fig,'visible','off'); 
 han.Title.Visible='on';
@@ -105,13 +107,13 @@ gnd_truth = (exp(1j.*calibration_vec)./exp(1j*calibration_vec(26))).';
 rng('default') % For reproducibility
 d = [];
 base = 4000;
-mu = 34; sigma = 10; r = random('Normal',mu,sigma,10*base, 1); d = [d; r];
+mu = 34; sigma = 13; r = random('Normal',mu,sigma,10*base, 1); d = [d; r];
 % mu = 50; sigma = 6; r = random('Normal',mu,sigma,1000, 1); d = [d; r];
 % mu = 40; sigma = 10; r = random('Uniform',-40,60,30000, 1); d = [d; r];
-mu = -2; sigma = 5; r = random('Normal',mu,sigma,2*base, 1); d = [d; r];
-mu = -21; sigma = 10; r = random('Normal',mu,sigma,4*base, 1); d = [d; r];
-mu = 0; sigma = 10; r = random('Uniform',-45,45,5*base, 1); d = [d; r];
-d = d(abs(d)<=40);
+mu = -12; sigma = 8; r = random('Normal',mu,sigma,2*base, 1); d = [d; r];
+mu = -41; sigma = 12; r = random('Normal',mu,sigma,4*base, 1); d = [d; r];
+mu = 0; sigma = 10; r = random('Uniform',-60,60,5*base, 1); d = [d; r];
+d = d(abs(d)<=60);
 histogram(d);
 
 pa = get_phased_array(60.48e9);
@@ -123,7 +125,7 @@ tmp_data.az = d;
 tmp_data.el = zeros(length(d),1);
 tmp_data.sv = A.*gnd_truth;
 
-ang = [-70:1:70];
+ang = [-60:1:60];
 cand_idx = -999*ones(length(ang), 1000);
 steer = steervec(pa.getElementPosition()/(physconst('LightSpeed')/60.48e9), [ang;zeros(1,length(ang))]);
 
@@ -150,7 +152,7 @@ x = sum(ang(I)>=edges2(1:end-1).' & ang(I)<=edges2(2:end).' & (N2>5).', 1);
 [N3,edges3] = histcounts(ang(I(find(x~=0))),edges2);
 
 
-min_cnt = min(N2(N2>5));
+min_cnt = min(N2(N2>10));
 y = ang(I);
 new_idx = [];
 for ii=1:length(N2)
@@ -174,26 +176,29 @@ rng(0);
 % size(new_idx)
 % figure; plot(abs(az_err)); hold on; plot(abs(az_err2));
 
-figure; plot(rms(angle(res./gnd_truth), 1)); hold on;
+figure; plot(rms(angle(res./gnd_truth), 1)); hold on; xlim([0 40])
 plot(rms(angle(res2./gnd_truth), 1)); hold on;
 
 data = [];
 data.ang = d;
-data.cal_vec1 = res(:, 1:50);
-data.cal_vec2 = res2(:, 1:50);
+data.cal_vec1 = res(:, 1:40);
+data.cal_vec2 = res2(:, 1:40);
 data.gnd_truth = gnd_truth;
 save("d6.mat", "data");
 load("d6.mat");
 figure; 
 subplot(121); 
-histogram(data.ang); xlabel("Path angle (degree)"); ylabel("Count"); title("Unknown Distribution");
+histogram(data.ang); xlabel("Path angle (degree)"); ylabel("Count"); title("Unknown Distribution"); 
+xlim([-60 60]); xticks(-60:30:60);
 subplot(122);
-plot([1:50]*100, rms(angle(data.cal_vec1./data.gnd_truth), 1)); hold on;
-plot([1:50]*100, rms(angle(data.cal_vec2./data.gnd_truth), 1)); hold on;
-xlim([0 5e3]); legend(["wo/ selection strategy", "w/ selection strategy"]);
+plot([1:size(data.cal_vec1, 2)]*100, rms(angle(data.cal_vec1./data.gnd_truth), 1)); hold on;
+plot([1:size(data.cal_vec2, 2)]*100, rms(angle(data.cal_vec2./data.gnd_truth), 1)); hold on;
+xlim([0 size(data.cal_vec2, 2)*100]); legend(["wo/ selection strategy", "w/ selection strategy"]);
 xlabel("Number of measurements"); ylabel("RMS phase error (rad)");
 %% test
 figure;
 load("../mmw-calibration-sim/cal32_new_taoffice.mat"); % somhow this still works for node 1 mod 5
 diff = (exp(1j.*calibration_vec(az_idx_set1))./exp(1j*calibration_vec(az_idx_set2))).';
 plot(abs(angle(diff))./pi);
+
+
