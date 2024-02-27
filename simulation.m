@@ -6,6 +6,7 @@ M = sqrt(URA_size); % antenna size, per side
 Nmeas = [1e2 1e3 1e4 1e5];
 % max_accumulation_err = zeros(length(Nmeas), length(URA_size), N_realizations);
 est_err = zeros(URA_size(end), length(Nmeas), length(URA_size), N_realizations);
+est_err2 = zeros(URA_size(end), length(Nmeas), length(URA_size), N_realizations);
 
 for jj=1:N_realizations
     rng(jj);
@@ -20,6 +21,7 @@ for jj=1:N_realizations
         
         for kk=1:length(URA_size)
             est_err(1:URA_size(kk), ii, kk, jj) = reshape(exp(1j*x*([0:M(kk)-1]-M(kk)/2)).*exp(1j*x*([0:M(kk)-1]-M(kk)/2).'), [], 1); 
+            est_err2(1:URA_size(kk), ii, kk, jj) = reshape(exp(1j*x*[0:M(kk)-1]).*exp(1j*x*[0:M(kk)-1].'), [], 1); 
         end
     end
 end
@@ -40,17 +42,27 @@ end
 data = [];
 data.Nmeas = Nmeas;
 data.URA_size = URA_size;
-data.dp = zeros(length(Nmeas), length(URA_size));
+data.mean_err = zeros(length(Nmeas), length(URA_size)); % ref in the middle
+data.mean_err2 = zeros(length(Nmeas), length(URA_size)); % ref in the corner
 for kk=1:length(URA_size)
     tmp = squeeze(rms(angle(est_err(1:URA_size(kk),:,kk,:)), 1));
     tmp = mean(tmp,2);
-    data.dp(:,kk) = tmp;
+    data.mean_err(:,kk) = tmp;
+
+    tmp = squeeze(rms(angle(est_err2(1:URA_size(kk),:,kk,:)), 1));
+    tmp = mean(tmp,2);
+    data.mean_err2(:,kk) = tmp;
 end
 % save("d7.mat","data");
 fig = figure('Units','inches', 'Position', [1 1 10 4]);
-bar(data.dp); legend("array size "+string(data.URA_size));
+bar(data.mean_err); legend("array size "+string(data.URA_size));
 set(gca, 'XTickLabel', string(data.Nmeas))
-xlabel("Number of measurements"); ylabel("Average RMS estimation error (rad)");
+xlabel("Number of measurements"); ylabel("RMS estimation error (rad)");
+
+fig = figure('Units','inches', 'Position', [1 1 10 4]);
+bar([data.mean_err(end,:).' data.mean_err2(end,:).']); legend(["ref in the middle", "ref in the corner"]);
+set(gca, 'XTickLabel', string(data.URA_size))
+xlabel("Phased array size"); ylabel("RMS estimation error (rad)");
 %% test uniform distribution
 ang = [-60:1:60];
 steer = zeros(32, length(ang));
